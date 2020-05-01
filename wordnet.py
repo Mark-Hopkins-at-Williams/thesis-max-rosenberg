@@ -86,7 +86,10 @@ def get_flatness_from_sense(sense):
         children.add(y)
         for z in get_all_hyponyms_from_sense(y):
             non_children.add(z)
-    return len(children)/(len(non_children)+len(children))
+    if (len(non_children)+len(children)) != 0:
+        return len(children)/(len(non_children)+len(children))
+    else:
+        return 1.0
 
 class Repitition():
     def __init__(self):
@@ -94,6 +97,17 @@ class Repitition():
     
     def get_repitition_from_sense(self, sense):
         return self.the_big_one.count(sense)
+    
+    def which_parents(self, sense):
+        result = []
+        entity = wn.synset("entity.n.01")
+        for y in entity.hyponyms():
+            if y == sense:
+                result.append(entity)
+            for z in get_all_hyponyms_from_sense(y):
+                if z == sense:
+                    result.append(y)
+        return result
     
     def generate_the_big_one(self):
         result = []
@@ -228,13 +242,19 @@ if __name__ == "__main__":
     
     print(get_flatness_from_sense(wn.synset("hunting_dog.n.01")))
     print(get_flatness_from_sense(wn.synset("dog.n.01")))
+    print(get_flatness_from_sense(wn.synset("french_bulldog.n.01")))
     print(rep.get_repitition_from_sense(wn.synset("hunting_dog.n.01")))
     print(rep.get_repitition_from_sense(wn.synset("dog.n.01")))
+    print(rep.get_repitition_from_sense(wn.synset("french_bulldog.n.01")))
     print("\n")
     print(get_flatness_from_sense(wn.synset("beer.n.01")))
     print(get_flatness_from_sense(wn.synset("wine.n.01")))
+    print(get_flatness_from_sense(wn.synset("whiskey.n.01")))
+    print(get_flatness_from_sense(wn.synset("highball.n.01")))
     print(rep.get_repitition_from_sense(wn.synset("beer.n.01")))
     print(rep.get_repitition_from_sense(wn.synset("wine.n.01")))
+    print(rep.which_parents(wn.synset("wine.n.01")))
+    print(rep.get_repitition_from_sense(wn.synset("whiskey.n.01")))
     
     
     
