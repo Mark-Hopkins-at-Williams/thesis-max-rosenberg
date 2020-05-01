@@ -28,7 +28,7 @@ class WordnetPuzzleGenerator(PuzzleGenerator):
     def _build_vocab(self):
         words = list(get_all_lemmas_from_sense(self.root_synset))
         word_to_ix = dict([(v, k) for (k,v) in enumerate(words)])
-        print("vocab size: {}".format(len(word_to_ix)))
+        print("vocab size for word {}: {}".format(self.root_synset.name(), len(word_to_ix)))
         return word_to_ix
     
     def get_vocab(self):

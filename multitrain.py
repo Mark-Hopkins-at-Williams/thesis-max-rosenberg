@@ -5,7 +5,8 @@ import torch.optim as optim
 import torch.nn.functional as F
 from puzzle import make_puzzle_matrix, make_puzzle_targets, WordnetPuzzleGenerator
 import time
-from wordnet import hypernym_chain
+import csv
+from wordnet import hypernym_chain, Specificity
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -123,7 +124,7 @@ def predict(model, puzzle, generator):
     predictions = log_probs.argmax(dim=1)
     return predictions    
 
-def train(final_root_synset, initial_root_synset, num_epochs, hidden_size, 
+def train(root_synset_lists, num_epochs, hidden_size, 
           num_puzzles_to_generate, batch_size, multigpu = False):
     def maybe_regenerate(puzzle_generator, epoch, prev_loader, prev_test_loader):
         if epoch % 100 == 0:
@@ -153,58 +154,95 @@ def train(final_root_synset, initial_root_synset, num_epochs, hidden_size,
             finish_time = time.clock()
             time_per_epoch = (finish_time - start_time) / epoch
             print('Average time per epoch: {:.2} sec'.format(time_per_epoch))
+            
+    def get_final_root_synset(initial_synset):
+        chain = hypernym_chain(initial_root_synset)
+        spec = Specificity()
+        for w in chain[::-1]:
+            if spec.evaluate(w) < 700:
+                return w.name()
+            
+    def write_to_csv(word, num_epochs, best_accuracy, success):
+        with open('multrain_data.csv', mode='a') as csv_file:
+                    multitrain_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                
+                    multitrain_writer.writerow([word, num_epochs, best_accuracy, success])
 
-
-    start_time = time.clock()
-    puzzle_generator = WordnetPuzzleGenerator(final_root_synset)
-    input_size = 5 * len(puzzle_generator.get_vocab())
-    output_size = 5
-    model = TiedClassifier(input_size, output_size, hidden_size)
-    if multigpu and torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
-        #dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
-        model = nn.DataParallel(model)
-    
-    model.to(device)
-    loader = None
-    test_loader = None
-    loss_function = nn.NLLLoss()
-    optimizer = optim.Adam(model.parameters())
-    best_model = None
-    best_test_acc = -1.0
-    puzzle_generator.reset_root(initial_root_synset)
-    for epoch in range(num_epochs):
-        model.train()
-        model.zero_grad()
-        loader, test_loader = maybe_regenerate(puzzle_generator, epoch, 
-                                               loader, test_loader)
-        for data, response in loader:
-            input_matrix = data.to(device)
-            log_probs = model(input_matrix)
-            loss = loss_function(log_probs, response)
-            loss.backward()
-            optimizer.step()
-        best_model, best_test_acc = maybe_evaluate(model, epoch, initial_root_synset,
-                                                   best_model, best_test_acc)
+    # modified this part to loop through root synset lists
+    for root_synset_list in root_synset_lists:
+        initial_root_synset = root_synset_list[0]
         
-        if best_test_acc > .8 and initial_root_synset != final_root_synset:
-            current_root = initial_root_synset
-            initial_root_synset = hypernym_chain(initial_root_synset)[1].name()
-            puzzle_generator.reset_root(initial_root_synset)
-            print("Successful training of {}! Moving on to {}.".format(current_root, initial_root_synset))
-            print('saving new model')
-            torch.save(model.state_dict(), 'best.model')
-            best_test_acc = -1.0
-            loader, test_loader = maybe_regenerate(puzzle_generator, 100, 
+        if len(root_synset_list) != 2:
+            final_root_synset = get_final_root_synset(initial_root_synset)
+        else:
+            final_root_synset = root_synset_list[1]
+            
+        start_time = time.clock()
+        puzzle_generator = WordnetPuzzleGenerator(final_root_synset)
+        input_size = 5 * len(puzzle_generator.get_vocab())
+        output_size = 5
+        model = TiedClassifier(input_size, output_size, hidden_size)
+        if multigpu and torch.cuda.device_count() > 1:
+            print("Let's use", torch.cuda.device_count(), "GPUs!")
+            #dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
+            model = nn.DataParallel(model)
+        
+        model.to(device)
+        loader = None
+        test_loader = None
+        loss_function = nn.NLLLoss()
+        optimizer = optim.Adam(model.parameters())
+        best_model = None
+        best_test_acc = -1.0
+        puzzle_generator.reset_root(initial_root_synset)
+        for epoch in range(num_epochs):
+            model.train()
+            model.zero_grad()
+            loader, test_loader = maybe_regenerate(puzzle_generator, epoch, 
                                                    loader, test_loader)
-        
-        maybe_report_time()
+            for data, response in loader:
+                input_matrix = data.to(device)
+                log_probs = model(input_matrix)
+                loss = loss_function(log_probs, response)
+                loss.backward()
+                optimizer.step()
+            best_model, best_test_acc = maybe_evaluate(model, epoch, initial_root_synset,
+                                                       best_model, best_test_acc)
+            
+            if best_test_acc > .8:
+                current_root = initial_root_synset
+                initial_root_synset = hypernym_chain(initial_root_synset)[1].name()
+                puzzle_generator.reset_root(initial_root_synset)
+                print("Successful training of {}! Moving on to {}.".format(current_root, initial_root_synset))
+
+                write_to_csv(current_root, epoch, best_test_acc, True)
+                                    
+                print('saving new model')
+                torch.save(model.state_dict(), 'best.model')
+                best_test_acc = -1.0
+                loader, test_loader = maybe_regenerate(puzzle_generator, 100, 
+                                                       loader, test_loader)
+            
+            maybe_report_time()
+            
+            if epoch == num_epochs - 1:
+                write_to_csv(current_root, epoch, best_test_acc, False)
+                print("took more than ", num_epochs, " epochs on word ", current_root, "moving on to the next set")
+                break
+            
     return best_model
 
 if __name__ == '__main__':
-    train(final_root_synset = 'carnivore.n.01', 
-          initial_root_synset = 'cat.n.01',
-          num_epochs=300000, 
+    roots_to_test = [
+                     ['alcohol.n.01'],
+                     ['crime.n.01'],
+                     ['dog.n.01'],
+                     ['fluid.n.01'],
+                     ['vehicle.n.01'],
+                     ['creation.n.02']
+                     ]
+    train(roots_to_test,
+          num_epochs= 10000, 
           hidden_size=500,
           num_puzzles_to_generate=2000,
           batch_size=256,

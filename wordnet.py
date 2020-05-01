@@ -11,6 +11,20 @@ def synsets_of_mercury():
         print(synset)
         
 
+def hypernym_chain_with_specs(synset_name):
+    """
+    e.g. hypernym_chain('boat.n.01')
+    
+    """
+    spec = Specificity()
+    synset = wn.synset(synset_name)
+    result = [synset]
+    while len(synset.hypernyms()) > 0:
+        synset = synset.hypernyms()[0]
+        syn_spec = spec.evaluate(synset)
+        result.append((synset,syn_spec))
+    return result
+
 def hypernym_chain(synset_name):
     """
     e.g. hypernym_chain('boat.n.01')
@@ -54,6 +68,41 @@ def get_all_hyponyms_from_sense(sense):
         for z in get_all_hyponyms_from_sense(y):
             result.add(z)
     return result
+
+def get_just_children_from_sense(sense):
+    """
+    e.g. get_just_children_from_sense(wn.synset('metallic_element.n.01'))
+    
+    """
+    result = set()
+    for y in sense.hyponyms():
+        result.add(y)
+    return result
+
+def get_flatness_from_sense(sense):
+    children = set()
+    non_children = set()
+    for y in sense.hyponyms():
+        children.add(y)
+        for z in get_all_hyponyms_from_sense(y):
+            non_children.add(z)
+    return len(children)/(len(non_children)+len(children))
+
+class Repitition():
+    def __init__(self):
+        self.the_big_one = self.generate_the_big_one()
+    
+    def get_repitition_from_sense(self, sense):
+        return self.the_big_one.count(sense)
+    
+    def generate_the_big_one(self):
+        result = []
+        entity = wn.synset("entity.n.01")
+        for y in entity.hyponyms():
+            result.append(y)
+            for z in get_all_hyponyms_from_sense(y):
+                result.append(z)
+        return result
 
 def normalize_lemma(lemma):
     lemma = " ".join(lemma.split("_"))
@@ -175,9 +224,17 @@ def show_puzzles(puzzles):
 
 
 if __name__ == "__main__":
-    generate_synset = GetRandomSynset('dog.n.1')
-    test_puzzles = generate_synset.generate_puzzles()   
-#    show_puzzles(test_puzzles)
-    print(len(test_puzzles))
+    rep = Repitition()
+    
+    print(get_flatness_from_sense(wn.synset("hunting_dog.n.01")))
+    print(get_flatness_from_sense(wn.synset("dog.n.01")))
+    print(rep.get_repitition_from_sense(wn.synset("hunting_dog.n.01")))
+    print(rep.get_repitition_from_sense(wn.synset("dog.n.01")))
+    print("\n")
+    print(get_flatness_from_sense(wn.synset("beer.n.01")))
+    print(get_flatness_from_sense(wn.synset("wine.n.01")))
+    print(rep.get_repitition_from_sense(wn.synset("beer.n.01")))
+    print(rep.get_repitition_from_sense(wn.synset("wine.n.01")))
+    
     
     

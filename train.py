@@ -157,6 +157,6 @@ def run(params, puzzle_gen):
     return model
     
 model = run(TrainingParameters(parameters), 
-            WordnetPuzzleGenerator('cat.n.1'))
+            WordnetPuzzleGenerator('dog.n.1'))
 
 
