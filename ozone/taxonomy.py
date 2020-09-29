@@ -34,14 +34,14 @@ class Taxonomy:
             return 0
         return len(self.get_hyponyms(node)) / num_total_hyps
 
-    def repititions(self, node): 
+    def repetitions(self, node): 
         if node == self.get_root_synset():
             return self.get_all_hyponyms(self.get_root_synset()).count(node) + 1
         else:
             return self.get_all_hyponyms(self.get_root_synset()).count(node)
 
 
-class BasicTaxonomy(Taxonomy):
+class AnimalTaxonomy(Taxonomy):
     '''Basic Taxonomy of Animals'''
     
     def __init__(self):
@@ -96,7 +96,7 @@ class BasicTaxonomy(Taxonomy):
             else:
                 return check_node.name
 
-    def repititions(self, node):
+    def repetitions(self, node):
         node = self.an.get_animal(node)
         if node.name == self.get_root_synset():
             return self.get_all_hyponyms(self.get_root_synset()).count(node) + 1

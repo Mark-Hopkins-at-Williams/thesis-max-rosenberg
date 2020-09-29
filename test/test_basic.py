@@ -1,14 +1,26 @@
 import unittest
-from ozone.taxonomy import BasicTaxonomy, AnimalNet, AnimalWord
+from ozone.taxonomy import AnimalTaxonomy
 
 class TestBasicTaxonomy(unittest.TestCase):
     
     def setUp(self):
-        self.taxonomy = BasicTaxonomy()   
+        self.taxonomy = AnimalTaxonomy()   
 
     def test_get_vocab(self):
-        expected = {'animal': 0, 'bird': 1, 'mammal': 2, 'finch': 3, 'hummingbird': 4, 'dog': 5, 'cat': 6}
-        return self.taxonomy.get_vocab == expected
+        expected = {'animal': 0,
+                     'bird': 1,
+                     'mammal': 2,
+                     'reptile': 3,
+                     'finch': 4,
+                     'swallow': 5,
+                     'dog': 6,
+                     'cat': 7,
+                     'monkey': 8,
+                     'giraffe': 9,
+                     'iguana': 10,
+                     'bulldog': 11,
+                     'poodle': 12}
+        assert self.taxonomy.get_vocab() == expected
 
     def test_get_root_synset(self):
         expected = "animal"
@@ -42,11 +54,11 @@ class TestBasicTaxonomy(unittest.TestCase):
         assert self.taxonomy.flatness("mammal") == 2/3
         assert self.taxonomy.flatness ("animal") == 1/4
 
-    def test_reptitions(self):
-        assert self.taxonomy.repititions('animal') == 1
-        assert self.taxonomy.repititions('mammal') == 1
-        assert self.taxonomy.repititions('dog') == 1
-        assert self.taxonomy.repititions('bulldog') == 1
+    def test_repetitions(self):
+        assert self.taxonomy.repetitions('animal') == 1
+        assert self.taxonomy.repetitions('mammal') == 1
+        assert self.taxonomy.repetitions('dog') == 1
+        assert self.taxonomy.repetitions('bulldog') == 1
 
         
 if __name__ == "__main__":

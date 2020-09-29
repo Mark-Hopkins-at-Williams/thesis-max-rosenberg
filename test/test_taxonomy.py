@@ -1,6 +1,6 @@
 import unittest
 from ozone.taxonomy import WordnetTaxonomy, TaxonomyPuzzleGenerator
-
+from nltk.corpus import wordnet as wn
 
 class TestTaxonomy(unittest.TestCase):
     
@@ -23,8 +23,8 @@ class TestTaxonomy(unittest.TestCase):
         assert self.taxonomy.get_vocab() == expected
 
     def test_get_root_synset(self):
-        expected = "apple.n"
-        assert self.taxonomy.get_root_synset == expected
+        expected = "apple.n.01"        
+        assert self.taxonomy.get_root_synset() == expected
         
     def test_random_node(self):
         assert self.taxonomy.random_node(22,22) == 'eating_apple.n.01'
@@ -41,14 +41,14 @@ class TestTaxonomy(unittest.TestCase):
         assert result == expected
 
     def test_get_direct_hyponyms(self):
-        expected = set {[
-            "cooking_apple",
-            "newtown_wonder",
-            "lane's_prince_albert",
-            "bramley's_seedling",
-            "rome_beauty"
-        ]}
-        result = set(self.taxonomy.get_direct_hyponyms)
+        expected = set ([
+            "newtown_wonder.n.01",
+            "lane's_prince_albert.n.01",
+            "bramley's_seedling.n.01",
+            "rome_beauty.n.01"
+        ])
+        expected = {wn.synset(s) for s in expected}
+        result = set(self.taxonomy.get_hyponyms('cooking_apple.n.01'))
         assert result == expected
         
     def test_random_non_hyponym(self):
