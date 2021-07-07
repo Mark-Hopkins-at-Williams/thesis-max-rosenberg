@@ -23,6 +23,7 @@ class PuzzleGenerator:
     def make_puzzle_matrix(self, puzzles):
         matrix = []
         for puzzle in puzzles:
+            print("puzzle: ", puzzle)
             choices, _ = puzzle
             oneHotVec = []
             for choice in choices:
@@ -40,6 +41,8 @@ class PuzzleGenerator:
 
 def one_hot(word, vocab):
     vec = [0]*len(vocab)
+    print("vocab: ", vocab)
+    print("word: ", word)
     vec[vocab[word]] = 1
     return vec
 

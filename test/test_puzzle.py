@@ -50,14 +50,15 @@ class TestPuzzle(unittest.TestCase):
 
     def test_batch_generate(self):
         puzzles = self.generator.batch_generate(number_of_puzzles = 3)
+        print("puzzles in test: ", puzzles)
         assert len(puzzles) == 3
         first_puzzle = puzzles[0]
         # puzzle should have the form:
         #    ('stayman', "lane's prince albert", 'northern spy'), 1)
         ((choice1, choice2, choice3), oddman) = first_puzzle
-        assert choice1 in self.generator.get_vocab()
-        assert choice2 in self.generator.get_vocab()
-        assert choice3 in self.generator.get_vocab()
+        assert choice1[:-5].replace("_", " ") in self.generator.get_vocab()
+        assert choice2[:-5].replace("_", " ") in self.generator.get_vocab()
+        assert choice3[:-5].replace("_", " ") in self.generator.get_vocab()
         assert len(set([choice1, choice2, choice3])) == 3 # all unique
         assert oddman in {0,1,2} 
         

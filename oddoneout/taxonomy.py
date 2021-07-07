@@ -136,6 +136,9 @@ class GraphTaxonomy:
                 result |= self.get_descendants(child)
             return result
 
+    def as_lemma(self, node):
+        return node
+
 
 
 

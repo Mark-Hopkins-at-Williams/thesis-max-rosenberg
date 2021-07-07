@@ -2,7 +2,7 @@ import random
 import queue
 from ozone.animals import AnimalNet
 from ozone.wordnet import GetRandomSynset
-from ozone.wordnet import get_all_lemmas_from_sense, hypernym_chain
+from ozone.wordnet import get_all_lemmas_from_sense, hypernym_chain, Specificity
 from ozone.puzzle import PuzzleGenerator
 from nltk.corpus import wordnet as wn
 
@@ -27,66 +27,27 @@ class TaxonomyGraph:
         self.name_to_vertex = dict([(v.name, v) for v in (self.nodes)])
 
 class Taxonomy:
-    def __init__(self, nodes, edges, root):
-        self.nodes = nodes
-        self.edges = edges
-        self.root = root
-        self.graph = TaxonomyGraph(nodes, edges)
 
     def get_root_node(self):
-        return self.root.name
+        raise NotImplementedError("Cannot call this on an abstract class.")
     
     def get_vocab(self):
-        return self.graph.vocab
+        raise NotImplementedError("Cannot call this on an abstract class.")
 
-    def lookup_vertex_by_name(self, name):
-        return self.graph.name_to_vertex[name]
-
-    def get_descendents(self, node):
-        node_obj = self.lookup_vertex_by_name(node)
-        res = []
-        to_check = queue.Queue()
-        for e in self.edges:
-            if e[0].name == node_obj.name:
-                res.append(e[1].name)
-                to_check.put(e[1])
-
-        while not to_check.empty():
-            v_to_check = to_check.get()
-            for e in self.edges:
-                if e[0].name == v_to_check.name:
-                    res.append(e[1].name)
-                    to_check.put(e[1])
-
-        return res
+    def get_descendants(self, node):
+        raise NotImplementedError("Cannot call this on an abstract class.")
 
     def get_children(self, node):
-        res = []
-        for e in self.edges:
-            if e[0].name == node:
-                res.append(e[1].name)
-        return res
+        raise NotImplementedError("Cannot call this on an abstract class.")
 
     def get_ancestors(self, node):
-        node_obj = self.lookup_vertex_by_name(node)
-        if node_obj.name == "animal":
-            return []
-        res = []
-        curr = node_obj
-        while True:
-            for e in self.edges:
-                if e[1].name == curr.name:
-                    res.append(e[0].name)
-                    curr = e[0]
-                    if e[0].name == self.get_root_node():
-                        return res
-
+        raise NotImplementedError("Cannot call this on an abstract class.")
 
     def get_specificity(self, node):
-        return len(self.get_descendents(node))
+        return len(self.get_descendants(node)) + 1
 
     def random_node(self, specificity_lb, specificity_ub):
-        shuffled = [x for x in self.get_descendents(self.get_root_node())]
+        shuffled = [x for x in self.get_descendants(self.get_root_node())]
         shuffled.append(self.get_root_node())
         random.shuffle(shuffled)
         for element in shuffled:
@@ -95,29 +56,29 @@ class Taxonomy:
                 return element
         raise Exception("Couldn't find a node with specificity within the bounds")
 
-    def random_non_descendent(self, node):
+    def random_non_descendant(self, node):
         counter = 0
         while (counter < 1000):
             check_node = (self.random_node(0, 10))
-            hyps = self.get_descendents(node)
+            hyps = self.get_descendants(node)
             if check_node == node or check_node in hyps:
                 counter += 1
             else:
                 return check_node
 
-    def random_descendents(self, node, k):
+    def random_descendants(self, node, k):
         # node = wn.synset(node)
-        hyps = self.get_descendents(node) # children?
+        hyps = self.get_descendants(node) # children?
         if len(hyps) < k:
             return None
         return random.sample(hyps, k)
 
     def flatness(self, node):
         """
-        The ratio of children to total descendents of a node.
+        The ratio of children to total descendants of a node.
         A 'flatter' node will have a higher flatness.
         """
-        num_total_hyps = len(self.get_descendents(node))
+        num_total_hyps = len(self.get_descendants(node))
         if num_total_hyps == 0:
             return 0
         return len(self.get_children(node)) / num_total_hyps
@@ -127,9 +88,9 @@ class Taxonomy:
         Repititions  is the number of times a given node appears in the taxonomy.
         """
         if node == self.get_root_node():
-            return self.get_descendents(self.get_root_node()).count(node) + 1
+            return self.get_descendants(self.get_root_node()).count(node) + 1
         else:
-            return self.get_descendents(self.get_root_node()).count(node)
+            return self.get_descendants(self.get_root_node()).count(node)
 
     def wu_palmer_similarity(self, node1, node2):
         """
@@ -174,20 +135,20 @@ class Taxonomy:
 
         return numerator / denominator
 
-    def rosenberg_descendent_similarity(self, node):
+    def rosenberg_descendant_similarity(self, node):
         total = 0
         num_tests = 10
-        descendents = self.get_descendents(node)
-        for d in descendents:
+        descendants = self.get_descendants(node)
+        for d in descendants:
             d_sim_total = 0
             for _ in range(num_tests):
-                x = self.random_descendents(node, 1)[0]
+                x = self.random_descendants(node, 1)[0]
                 d_sim_total += self.wu_palmer_similarity(d,x)
             d_sim_avg = d_sim_total / num_tests 
             total += d_sim_avg
-        if len(descendents) == 0:
+        if len(descendants) == 0:
             return 0
-        avg = total / len(descendents)
+        avg = total / len(descendants)
         return avg
 
     def wu_palmer_similarity_based_5thing_ooo_solver(self, nodes):
@@ -239,13 +200,32 @@ class Taxonomy:
 
 class AnimalTaxonomy(Taxonomy):
     '''Basic Taxonomy of Animals'''
+    
+    def __init__(self):
+        self.an = AnimalNet()
+        self.root_synset = self.an.get_animal("animal")
+        self.vocab = self.an.graph.vocab
 
-    # def repetitions(self, node):
-    #     node = self.an.get_animal(node)
-    #     if node.name == self.get_root_node():
-    #         return self.get_descendents(self.get_root_node()).count(node.name()) + 1
+    def get_root_node(self):
+        return self.root_synset.name
 
-    #     return self.get_descendents(self.get_root_node()).count(node.name())
+    def get_vocab(self):
+        return self.vocab
+
+    def get_descendants(self, node):
+        node = self.an.get_animal(node)
+        return [d.name for d in self.an.graph.descendants(node)]
+    
+    def get_children(self, node):
+        node = self.an.get_animal(node)
+        return [child.name for child in self.an.graph.children(node)]
+
+    def get_ancestors(self, node):
+        node_obj = self.an.get_animal(node)
+        result = []
+        for y in self.an.graph.ancestors(node_obj):
+            result.append(y.get_name())
+        return result
 
 class WordnetTaxonomy(Taxonomy):
     
@@ -267,12 +247,12 @@ class WordnetTaxonomy(Taxonomy):
     def get_vocab(self):
         return self.vocab
 
-    def get_descendents(self, node):
+    def get_descendants(self, node):
         node = wn.synset(node)
         result = set()
         for y in node.hyponyms():
             result.add(y.name())
-            for z in self.get_descendents(y.name()):
+            for z in self.get_descendants(y.name()):
                 result.add(z)
         return result
 
@@ -282,7 +262,6 @@ class WordnetTaxonomy(Taxonomy):
 
     def get_ancestors(self, node):
         return [hyper.name() for hyper in hypernym_chain(node)]
-    
 
 class TaxonomyPuzzleGenerator(PuzzleGenerator):
     
@@ -305,13 +284,13 @@ class TaxonomyPuzzleGenerator(PuzzleGenerator):
     def generate(self):
         root = self.taxonomy.random_node(self.specificity_lb, 
                                          self.specificity_ub)
-        puzzle = self.taxonomy.random_descendents(root, self.num_choices() - 1)
+        puzzle = self.taxonomy.random_descendants(root, self.num_choices() - 1)
         while not puzzle:
             root = self.taxonomy.random_node(self.specificity_lb, 
                                          self.specificity_ub)
-            puzzle = self.taxonomy.random_descendents(root, self.num_choices() - 1)
+            puzzle = self.taxonomy.random_descendants(root, self.num_choices() - 1)
         
-        random_word = self.taxonomy.random_non_descendent(root)
+        random_word = self.taxonomy.random_non_descendant(root)
         print('random word: ', random_word)
         puzzle.append(random_word)
         result = [(str(choice), 0) for choice in puzzle[:-1]] + [(str(puzzle[-1]), 1)]
@@ -321,29 +300,6 @@ class TaxonomyPuzzleGenerator(PuzzleGenerator):
         return (xyz, onehot.index(1))
 
 if __name__ == "__main__":
-    animal = CategoryNode("animal")
-    bird = CategoryNode("bird")
-    mammal = CategoryNode("mammal")
-    reptile = CategoryNode("reptile")
-
-    finch = InstanceNode("finch")
-    swallow = InstanceNode("swallow")
-    dog = CategoryNode("dog")
-    cat = InstanceNode("cat")
-    monkey = InstanceNode("monkey")
-    giraffe = InstanceNode("giraffe")
-    iguana = InstanceNode("iguana")
-
-    bulldog = InstanceNode("bulldog")
-    poodle = InstanceNode("poodle")
-
-    vertices = [animal, bird, mammal, reptile, finch, swallow, dog,
-                    cat, monkey, giraffe, iguana, bulldog, poodle]
-
-    edges = [(animal, bird), (animal, mammal), (animal, reptile),
-            (mammal, dog), (mammal, cat), (mammal, monkey),
-            (mammal, giraffe), (bird, finch), (bird, swallow),
-            (reptile, iguana), (dog, bulldog), (dog, poodle)]
-
-    ant = Taxonomy(vertices, edges, animal)
-    
+    ant = AnimalTaxonomy()
+    wnt = WordnetTaxonomy("apple.n.01")
+    print(wnt.get_specificity('eating_apple.n.01'))

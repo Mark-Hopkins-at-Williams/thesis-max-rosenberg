@@ -56,6 +56,13 @@ class WordnetTaxonomy(Taxonomy):
                 result.append(synset.name())
         return set([x for x in result if x in self.categories])
 
+    def get_children(self, synset_name):
+        sense = wn.synset(synset_name)
+        return [syn.name() for syn in sense.hyponyms()]
+
+    def get_descendants(self, synset_name):
+        return self.get_descendant_instances(synset_name)
+
     def get_descendant_instances(self, node):
         result = set()
         sense = wn.synset(node)
@@ -66,6 +73,10 @@ class WordnetTaxonomy(Taxonomy):
                 for lemma in z.lemmas():
                     result.add(decode_lemma(lemma))
         return result
+
+    def as_lemma(self, synset_name):
+        return synset_name[:-5]
+
 
 
 def decode_lemma(lemma):

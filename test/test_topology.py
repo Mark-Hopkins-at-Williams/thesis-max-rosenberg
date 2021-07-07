@@ -22,53 +22,48 @@ class TestTaxonomy(unittest.TestCase):
                     'yellow delicious': 29}  
         assert self.taxonomy.get_vocab() == expected
 
-    def test_get_root_synset(self):
-        expected = "apple.n"
-        assert self.taxonomy.get_root_synset == expected
+    def test_get_root_node(self):
+        expected = "apple.n.01"
+        assert self.taxonomy.get_root_node() == expected
         
     def test_random_node(self):
-        assert self.taxonomy.random_node(22,22) == 'eating_apple.n.01'
+        assert self.taxonomy.random_node(20,20) == 'eating_apple.n.01'
         assert self.taxonomy.random_node(5,5) == 'cooking_apple.n.01'
-        assert self.taxonomy.random_node(6,21) == None
         
-    def test_random_hyponyms(self):
-        expected = set(["lane's prince albert",
-                        "bramley's seedling",
-                        'cooking apple',
-                        'newtown wonder',
-                        'rome beauty'])
-        result = set(self.taxonomy.random_hyponyms('cooking_apple.n.01', 5))
-        assert result == expected
+    def test_random_descendants(self):
+        expected = set(["lane's_prince_albert.n.01",
+                        "bramley's_seedling.n.01",
+                        'cooking_apple.n.01',
+                        'newtown_wonder.n.01',
+                        'rome_beauty.n.01'])
+        result = set(self.taxonomy.random_descendants('cooking_apple.n.01', 3))
+        assert result.issubset(expected)
 
-    def test_get_direct_hyponyms(self):
-        expected = {
-            "cooking_apple",
-            "newtown_wonder",
-            "lane's_prince_albert",
-            "bramley's_seedling",
-            "rome_beauty"
-        }
-        result = set(self.taxonomy.get_direct_hyponyms)
+    def test_get_children(self):
+        expected = {'eating_apple.n.01', 
+                    'crab_apple.n.03', 
+                    'cooking_apple.n.01'}
+        result = set(self.taxonomy.get_children("apple.n.01"))
         assert result == expected
         
-    def test_random_non_hyponym(self):
-        non_eating_apples = {"bramley's seedling",
-                             'cooking apple',
-                             'crab apple',
-                             'crabapple',
-                             "lane's prince albert",
-                             'newtown wonder',
-                             'rome beauty'}
+    def test_random_non_descendant(self):
+        non_eating_apples = {"bramley's_seedling.n.01",
+                             'cooking_apple.n.01',
+                             'crab_apple.n.03',
+                             'crabapple.n.01',
+                             "lane's_prince_albert.n.01",
+                             'newtown_wonder.n.01',
+                             'rome_beauty.n.01'}
         for i in range(100):
-            non_hyponym = self.taxonomy.random_non_hyponym('eating_apple.n.01')
-            assert non_hyponym in non_eating_apples
+            non_descendant = self.taxonomy.random_non_descendant('eating_apple.n.01')
+            assert non_descendant in non_eating_apples
             
     def test_puzzle_gen(self):
-        cooking_apples = set(["lane's prince albert",
-                              "bramley's seedling",
-                              'cooking apple',
-                              'newtown wonder',
-                              'rome beauty'])
+        cooking_apples = set(["lane's_prince_albert.n.01",
+                              "bramley's_seedling.n.01",
+                              'cooking_apple.n.01',
+                              'newtown_wonder.n.01',
+                              'rome_beauty.n.01'])
         puzzgen = TaxonomyPuzzleGenerator(self.taxonomy, 4)
         puzzgen.specificity_lb = 5
         puzzgen.specificity_ub = 5

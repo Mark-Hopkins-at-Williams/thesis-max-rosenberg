@@ -46,12 +46,12 @@ def train(num_epochs, config, data_loader, multigpu=False):
     
     def maybe_report_time():
         if False and epoch % 100 == 0 and epoch > 0:
-            finish_time = time.clock()
+            finish_time = time.process_time()
             time_per_epoch = (finish_time - start_time) / epoch
             print('Average time per epoch: {:.2} sec'.format(time_per_epoch))
 
-    start_time = time.clock()
-    print('hi')
+    start_time = time.process_time()
+    print('epoch: {}'.format(epoch))
     net_factory = config.create_network_factory()
     model = net_factory(data_loader.input_size(), data_loader.output_size())
     if multigpu and torch.cuda.device_count() > 1:
@@ -70,6 +70,7 @@ def train(num_epochs, config, data_loader, multigpu=False):
         loader, test_loader = data_loader.get_loaders(epoch)
         for data, response in loader:
             input_matrix = cudaify(data)
+            torch.set_printoptions(profile="full")
             log_probs = model(input_matrix)
             loss = loss_function(log_probs, cudaify(response))
             loss.backward()
